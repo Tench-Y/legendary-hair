@@ -716,6 +716,7 @@ enum EMaterialShadingModel : int
 	MSM_SingleLayerWater		UMETA(DisplayName="SingleLayerWater"),
 	MSM_ThinTranslucent			UMETA(DisplayName="Thin Translucent"),
 	MSM_Strata					UMETA(DisplayName="Substrate", Hidden),
+      MSM_HairCard                            UMETA(DisplayName="Hair Card"),   // [HairCard] Kajiya-Kay dual-specular shading model for hair cards (ID=13)
 	/** Number of unique shading models. */
 	MSM_NUM						UMETA(Hidden),
 	/** Shading model will be determined by the Material Expression Graph,
@@ -827,6 +828,7 @@ enum ESubstrateShadingModel : int
 	SSM_PostProcess,
 	SSM_Decal,
 	SSM_UI,
+	SSM_HairCard,    // [HairCard] Substrate-side registration
 	/** Number of unique shading models. */
 	SSM_NUM,
 };

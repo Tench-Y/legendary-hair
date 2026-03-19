@@ -2996,6 +2996,12 @@ void FHLSLMaterialTranslator::GetMaterialEnvironment(EShaderPlatform InPlatform,
 			OutEnvironment.SetDefine(TEXT("MATERIAL_SHADINGMODEL_HAIR"), TEXT("1"));
 		}
 
+		// [HairCard] Kajiya-Kay dual-specular shading model for hair card meshes
+		if (EnvironmentDefines->HasShadingModel(MSM_HairCard))
+		{
+			OutEnvironment.SetDefine(TEXT("MATERIAL_SHADINGMODEL_HAIRCARD"), TEXT("1"));
+		}
+
 		if (EnvironmentDefines->HasShadingModel(MSM_Cloth) || EnumHasAnyFlags(EnvironmentDefines->SubstrateMaterialBsdfFeatures, ESubstrateBsdfFeature::Fuzz))
 		{
 			OutEnvironment.SetDefine(TEXT("MATERIAL_SHADINGMODEL_CLOTH"), TEXT("1"));

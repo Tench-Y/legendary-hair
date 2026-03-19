@@ -279,10 +279,10 @@ FMegaLightsMaterial LoadMaterial(float2 ScreenUV, uint2 ScreenCoord, bool bForce
 	Out.bIsSimple = GBuffer.ShadingModelID == SHADINGMODELID_DEFAULT_LIT;
 	Out.bIsSingle = false;
 	Out.bIsComplexSpecial = false;
-	Out.bIsHair = GBuffer.ShadingModelID == SHADINGMODELID_HAIR;
+	Out.bIsHair = GBuffer.ShadingModelID == SHADINGMODELID_HAIR || GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD;  // [HairCard]
 	Out.bHasBackfaceDiffuse = GBuffer.ShadingModelID == SHADINGMODELID_TWOSIDED_FOLIAGE || GBuffer.ShadingModelID == SHADINGMODELID_SUBSURFACE;
 	Out.bNeedsSeparateSubsurfaceLightAccumulation = UseSubsurfaceProfile(GBuffer.ShadingModelID);
-	Out.bNeedsComplexTransmittance = GBuffer.ShadingModelID == SHADINGMODELID_HAIR && ShouldUseHairComplexTransmittance(GBuffer);
+	Out.bNeedsComplexTransmittance = (GBuffer.ShadingModelID == SHADINGMODELID_HAIR || GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD) && ShouldUseHairComplexTransmittance(GBuffer);  // [HairCard]
 	Out.WorldNormal = GBuffer.WorldNormal;
 	Out.WorldNormalForPositionBias = GBuffer.WorldNormal;
 	Out.Depth = GBuffer.Depth;
@@ -293,14 +293,14 @@ FMegaLightsMaterial LoadMaterial(float2 ScreenUV, uint2 ScreenCoord, bool bForce
 	Out.bAllowSpatialFilter = true;
 	Out.Coverage = 1;
 
-	if (GBuffer.ShadingModelID == SHADINGMODELID_HAIR)
+	if (GBuffer.ShadingModelID == SHADINGMODELID_HAIR || GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD)  // [HairCard]
 	{
 		Out.WorldNormalForPositionBias = ComputeHairNormalForPositionBias(ScreenUV, Out.Depth, Out.WorldNormal);
 	}
 
 	#if SUBSTRATE_ENABLED && SUBSTRATE_GBUFFER_FORMAT==0
 
-	const bool bIsComplex = abs(GBuffer.Anisotropy) > 0 || GBuffer.ShadingModelID == SHADINGMODELID_EYE || GBuffer.ShadingModelID == SHADINGMODELID_HAIR;
+	const bool bIsComplex = abs(GBuffer.Anisotropy) > 0 || GBuffer.ShadingModelID == SHADINGMODELID_EYE || GBuffer.ShadingModelID == SHADINGMODELID_HAIR || GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD;  // [HairCard]
 	Out.bIsSimple = Out.bIsSimple && abs(GBuffer.Anisotropy) == 0;
 	Out.bIsSingle = !Out.bIsSimple && !bIsComplex;
 

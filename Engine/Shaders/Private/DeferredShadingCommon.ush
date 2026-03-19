@@ -306,6 +306,7 @@ bool IsSubsurfaceModel(int ShadingModel)
 		|| ShadingModel == SHADINGMODELID_SUBSURFACE_PROFILE
 		|| ShadingModel == SHADINGMODELID_TWOSIDED_FOLIAGE
 		|| ShadingModel == SHADINGMODELID_HAIR
+		|| ShadingModel == SHADINGMODELID_HAIRCARD
 		|| ShadingModel == SHADINGMODELID_EYE;
 }
 
@@ -322,6 +323,7 @@ bool HasCustomGBufferData(int ShadingModelID)
 		|| ShadingModelID == SHADINGMODELID_SUBSURFACE_PROFILE
 		|| ShadingModelID == SHADINGMODELID_TWOSIDED_FOLIAGE
 		|| ShadingModelID == SHADINGMODELID_HAIR
+		|| ShadingModelID == SHADINGMODELID_HAIRCARD
 		|| ShadingModelID == SHADINGMODELID_CLOTH
 		|| ShadingModelID == SHADINGMODELID_EYE;
 }
@@ -622,6 +624,13 @@ void MobileEncodeGBuffer(
 			OutGBufferB.a = GBuffer.CustomData.x; // 
 			OutGBufferC.a = GBuffer.CustomData.y; // 
 		}
+		else if (GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD)
+		{
+			// [HairCard] Mobile GBuffer encode - reuse Hair layout
+			OutGBufferA.b = MobileEncodeIdAndColorChannel(GBuffer.ShadingModelID, GBuffer.CustomData.z, true);
+			OutGBufferB.a = GBuffer.CustomData.x; // SecondaryRoughness
+			OutGBufferC.a = GBuffer.CustomData.y; // LobeSeparation
+		}
 		else if (GBuffer.ShadingModelID == SHADINGMODELID_TWOSIDED_FOLIAGE)
 		{
 			// encode 4 bits for shading model
@@ -728,6 +737,14 @@ FGBufferData MobileDecodeGBuffer(half4 InGBufferA, half4 InGBufferB, half4 InGBu
 			GBuffer.CustomData.x = InGBufferB.a; // 
 			GBuffer.CustomData.y = InGBufferC.a; //
 			GBuffer.GBufferAO = 1;	// no space for AO
+		}
+		else if (GBuffer.ShadingModelID == SHADINGMODELID_HAIRCARD)
+		{
+			// [HairCard] Mobile GBuffer decode - reuse Hair layout
+			GBuffer.CustomData.z = MobileDecodeColorChannel(InGBufferA.b, true); // Backlit
+			GBuffer.CustomData.x = InGBufferB.a; // SecondaryRoughness
+			GBuffer.CustomData.y = InGBufferC.a; // LobeSeparation
+			GBuffer.GBufferAO = 1;
 		}
 		else if (GBuffer.ShadingModelID == SHADINGMODELID_TWOSIDED_FOLIAGE)
 		{

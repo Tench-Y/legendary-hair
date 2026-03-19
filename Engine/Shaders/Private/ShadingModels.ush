@@ -110,6 +110,128 @@ FDirectLighting HairBxDF(FGBufferData GBuffer, half3 N, half3 V, FAreaLight Area
 	return Lighting;
 }
 
+//=============================================================================
+// [HairCard] Kajiya-Kay Helper Functions
+//=============================================================================
+
+// Shift tangent along normal to simulate cuticle tilt angle
+// Shift > 0 = towards root (R lobe), Shift < 0 = towards tip (TRT lobe)
+float3 HairCard_ShiftTangent(float3 T, float3 N, float Shift)
+{
+	return normalize(T + Shift * N);
+}
+
+// Kajiya-Kay strand specular core formula
+// T = shifted tangent, V = view dir, L = light dir, Exponent = sin^exp power
+float HairCard_StrandSpecular(float3 T, float3 V, float3 L, float Exponent)
+{
+	float3 H = normalize(L + V);
+	float DotTH = dot(T, H);
+	float SinTH = sqrt(saturate(1.0 - DotTH * DotTH));
+	float DirAtten = smoothstep(-1.0, 0.0, DotTH);
+	return DirAtten * pow(SinTH, Exponent);
+}
+
+// Roughness to specular exponent mapping
+// Roughness 0 -> Exp 128 (sharp), Roughness 1 -> Exp 2 (blurry)
+float HairCard_RoughnessToExponent(float Roughness)
+{
+	Roughness = saturate(Roughness);
+	return lerp(128.0, 2.0, Roughness * Roughness);
+}
+
+// Simplified Beer-Lambert absorption color for TRT transmission
+half3 HairCard_AbsorptionColor(half3 BaseColor, half Roughness)
+{
+	half cosThetaD = 0.7071; // approximate 45 degree average incidence
+	return pow(max(0.001, BaseColor), 2.0 / cosThetaD);
+}
+
+//=============================================================================
+// HairCardBxDF - Kajiya-Kay Dual Specular + Wrap Diffuse + Transmission
+//=============================================================================
+// Signature matches all UE BxDF functions for IntegrateBxDF() dispatch
+FDirectLighting HairCardBxDF(FGBufferData GBuffer, half3 N, half3 V, FAreaLight AreaLight, FShadowTerms Shadow)
+{
+	FDirectLighting Lighting = (FDirectLighting)0;
+
+	// ---------- Parameter Unpacking ----------
+	float3 T       = GBuffer.WorldTangent;
+	float3 L       = AreaLight.DiffuseL;
+	half   NoL     = AreaLight.NoL;
+	float  Falloff = AreaLight.Falloff;
+	float3 FalloffColor = AreaLight.FalloffColor;
+
+	float Roughness1      = GBuffer.Roughness;
+	float Roughness2      = GBuffer.CustomData.x;
+	float LobeSeparation  = GBuffer.CustomData.y;
+	float Backlit         = GBuffer.CustomData.z;
+	float SpecWeight      = GBuffer.CustomData.w;
+	float TRTBlend        = GBuffer.Specular;
+
+	// ---------- Dual Specular ----------
+	float Exp1 = HairCard_RoughnessToExponent(Roughness1);
+	float Exp2 = HairCard_RoughnessToExponent(Roughness2);
+
+	float Shift1 = +LobeSeparation;
+	float Shift2 = -LobeSeparation;
+
+	float3 T1 = HairCard_ShiftTangent(T, N, Shift1);
+	float3 T2 = HairCard_ShiftTangent(T, N, Shift2);
+
+	float Spec1 = HairCard_StrandSpecular(T1, V, L, Exp1);
+	float Spec2 = HairCard_StrandSpecular(T2, V, L, Exp2);
+
+	// R lobe color: near-white surface reflection
+	float3 SpecColor1 = lerp(float3(1,1,1), GBuffer.BaseColor, 0.1);
+	// TRT lobe color: blended between BaseColor and absorption-tinted color
+	float3 TRTAbsorbed = pow(abs(GBuffer.BaseColor), 1.5);
+	float3 SpecColor2 = lerp(GBuffer.BaseColor, TRTAbsorbed, TRTBlend);
+
+	// Energy budget: W1 + W2 scaled to SpecWeight
+	float W1 = 0.6;
+	float W2 = 0.4;
+	float WSum = max(W1 + W2, 1e-4);
+	float Budget = saturate(SpecWeight);
+	W1 = (W1 / WSum) * Budget;
+	W2 = (W2 / WSum) * Budget;
+
+	// ---------- Diffuse ----------
+	float DiffWrap = saturate(NoL * 0.5 + 0.5);
+	float DiffMask = saturate(NoL);
+	float DiffTerm = lerp(DiffWrap, DiffMask, 0.5);
+
+	Lighting.Diffuse = GBuffer.BaseColor * DiffTerm * (1.0 - Budget);
+
+	// ---------- Specular ----------
+	float SpecMask = saturate(NoL);
+	Lighting.Specular = (SpecColor1 * (W1 * Spec1) + SpecColor2 * (W2 * Spec2)) * SpecMask;
+
+	// Apply light falloff and color
+	Lighting.Diffuse  *= FalloffColor * Falloff;
+	Lighting.Specular *= FalloffColor * Falloff;
+
+	// Apply shadow
+	Lighting.Diffuse  *= Shadow.SurfaceShadow;
+	Lighting.Specular *= Shadow.SurfaceShadow;
+
+	// ---------- Transmission (backlit + rim) ----------
+	{
+		float BackLit = saturate(-NoL);
+		float NdotV   = saturate(abs(dot(N, V)));
+		float RimFresnel = pow(1.0 - NdotV, 4.0);
+		float TransTerm = BackLit * lerp(1.0, RimFresnel, 0.5);
+
+		half3 AbsColor = HairCard_AbsorptionColor(GBuffer.BaseColor, Roughness1);
+		Lighting.Transmission = AbsColor * TransTerm * Backlit;
+		Lighting.Transmission *= FalloffColor * Falloff;
+		Lighting.Transmission *= Shadow.TransmissionShadow;
+	}
+
+	return Lighting;
+}
+
+
 float New_a2( float a2, float SinAlpha, float VoH )
 {
 	return a2 + 0.25 * SinAlpha * (3.0 * sqrtFast(a2) + SinAlpha) / ( VoH + 0.001 );
@@ -1090,6 +1212,8 @@ FDirectLighting IntegrateBxDF( FGBufferData GBuffer, half3 N, half3 V, FAreaLigh
 			return TwoSidedBxDF( GBuffer, N, V, AreaLight, Shadow );
 		case SHADINGMODELID_HAIR:
 			return HairBxDF( GBuffer, N, V, AreaLight, Shadow );
+			case SHADINGMODELID_HAIRCARD:
+				return HairCardBxDF( GBuffer, N, V, AreaLight, Shadow );
 		case SHADINGMODELID_CLOTH:
 			return ClothBxDF( GBuffer, N, V, AreaLight, Shadow );
 		case SHADINGMODELID_EYE:

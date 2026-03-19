@@ -3464,6 +3464,7 @@ static void AddSurfaceSubstrateShadingModelFromMaterialShadingModels(FSubstrateM
 	if (InShadingModels.HasShadingModel(MSM_SubsurfaceProfile))	{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_SubsurfaceProfile); }
 	if (InShadingModels.HasShadingModel(MSM_TwoSidedFoliage))	{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_SubsurfaceThinTwoSided); }
 	if (InShadingModels.HasShadingModel(MSM_Hair))				{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_Hair); }
+	if (InShadingModels.HasShadingModel(MSM_HairCard))			{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_HairCard); }  // [HairCard]
 	if (InShadingModels.HasShadingModel(MSM_Cloth))				{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_Cloth); }
 	if (InShadingModels.HasShadingModel(MSM_Eye))				{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_Eye); }
 	if (InShadingModels.HasShadingModel(MSM_SingleLayerWater))	{ OutInfo.AddShadingModel(ESubstrateShadingModel::SSM_SingleLayerWater); }
@@ -7877,10 +7878,10 @@ static bool IsPropertyActive_Internal(EMaterialProperty InProperty,
 			Active = ShadingModels.HasAnyShadingModel({ MSM_Subsurface, MSM_PreintegratedSkin, MSM_TwoSidedFoliage, MSM_Cloth });
 			break;
 		case MP_CustomData0:
-			Active = ShadingModels.HasAnyShadingModel({ MSM_ClearCoat, MSM_Hair, MSM_Cloth, MSM_Eye, MSM_SubsurfaceProfile });
+			Active = ShadingModels.HasAnyShadingModel({ MSM_ClearCoat, MSM_Hair, MSM_Cloth, MSM_Eye, MSM_SubsurfaceProfile, MSM_HairCard });
 			break;
 		case MP_CustomData1:
-			Active = ShadingModels.HasAnyShadingModel({ MSM_ClearCoat, MSM_Eye });
+			Active = ShadingModels.HasAnyShadingModel({ MSM_ClearCoat, MSM_Eye, MSM_HairCard });
 			break;
 		case MP_EmissiveColor:
 			// Emissive is always active, even for light functions and post process materials, 

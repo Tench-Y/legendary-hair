@@ -136,6 +136,21 @@ void SetGBufferForShadingModel(
 		GBuffer.CustomData.z = saturate( GetMaterialCustomData0(PixelMaterialInputs) );	// Backlit
 	}
 #endif
+#if MATERIAL_SHADINGMODEL_HAIRCARD
+	else if (ShadingModel == SHADINGMODELID_HAIRCARD)
+	{
+		// [HairCard] CustomData channel allocation:
+		//   .x = SecondaryRoughness    (CustomData0 pin - controls TRT lobe width)
+		//   .y = LobeSeparation        (CustomData1 pin - angular offset between R and TRT lobes)
+		//   .z = Backlit               (Opacity pin   - back-lit transmission strength)
+		//   .w = SpecularWeight        (Metallic pin  - overall specular intensity budget)
+		GBuffer.CustomData.x = saturate( GetMaterialCustomData0(PixelMaterialInputs) );  // SecondaryRoughness
+		GBuffer.CustomData.y = saturate( GetMaterialCustomData1(PixelMaterialInputs) );  // LobeSeparation
+		GBuffer.CustomData.z = saturate( Opacity );                                       // Backlit
+		GBuffer.CustomData.w = saturate( GBuffer.Metallic );                              // SpecularWeight
+		GBuffer.Metallic = 0;  // Hair is dielectric - reset Metallic to avoid incorrect F0
+	}
+#endif
 #if MATERIAL_SHADINGMODEL_CLOTH
 	else if (ShadingModel == SHADINGMODELID_CLOTH)
 	{

@@ -1867,6 +1867,12 @@ static void DetermineUsedMaterialSlots(
 		Slots[GBS_CustomData] = GetGBufferSlotUsage(bUseCustomData);
 	}
 
+		if (Mat.MATERIAL_SHADINGMODEL_HAIRCARD)
+		{
+			SetStandardGBufferSlots(Slots, bWriteEmissive, bHasTangent, bHasVelocity, bWritesVelocity, bHasStaticLighting, bIsSubstrateMaterial, bIsSubstrateNewGBuffer);
+			Slots[GBS_CustomData] = GetGBufferSlotUsage(bUseCustomData);
+		}
+
 	if (Mat.MATERIAL_SHADINGMODEL_CLOTH)
 	{
 		SetStandardGBufferSlots(Slots, bWriteEmissive, bHasTangent, bHasVelocity, bWritesVelocity, bHasStaticLighting, bIsSubstrateMaterial, bIsSubstrateNewGBuffer);

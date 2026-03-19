@@ -169,6 +169,19 @@ FBxDFSample SampleHairBxDF(uint TermMask, FGBufferData GBuffer, float3 V, float4
 
 	return BxDFSample;
 }
+
+// [HairCard] IBL sampling - uniform sphere sampling (consistent with Hair strategy)
+FBxDFSample SampleHairCardBxDF(uint TermMask, FGBufferData GBuffer, float3 V, float4 E)
+{
+	float4 L = UniformSampleSphere(E.xy);
+
+	FBxDFSample BxDFSample;
+	BxDFSample.L = L.xyz;
+	BxDFSample.PDF = L.w;
+	BxDFSample.Weight = 1;
+	BxDFSample.Term = TermMask;
+	return BxDFSample;
+}
 #else
 {
 	TermMask &= SHADING_TERM_HAIR_R | SHADING_TERM_HAIR_TT | SHADING_TERM_HAIR_TRT;
@@ -222,6 +235,8 @@ FBxDFSample SampleBxDF(const uint TermMask, FGBufferData GBuffer, float3 V, floa
 		case SHADINGMODELID_HAIR:
 			return SampleHairBxDF(TermMask, GBuffer, V, E);
 		default:
+		case SHADINGMODELID_HAIRCARD:
+			return SampleHairCardBxDF(TermMask, GBuffer, V, E);
 			return (FBxDFSample)0;
 	}
 }
@@ -240,6 +255,7 @@ bool SupportsSampleBxDF(uint ShadingModelID)
 	case SHADINGMODELID_CLOTH:
 	case SHADINGMODELID_EYE:
 	case SHADINGMODELID_HAIR:
+	case SHADINGMODELID_HAIRCARD:
 		return true;
 	default:
 		return false;
